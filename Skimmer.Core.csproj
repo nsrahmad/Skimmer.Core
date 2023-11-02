@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nanorm" Version="0.0.6"/>
+        <PackageReference Include="Nanorm.Sqlite" Version="0.0.6"/>
+        <PackageReference Include="System.ServiceModel.Syndication" Version="8.0.0-rc.2.23479.6"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Data\db.sql"/>
+    </ItemGroup>
+
+
+</Project>
