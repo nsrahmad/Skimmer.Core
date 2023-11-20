@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Nanorm" Version="0.0.6"/>
-        <PackageReference Include="Nanorm.Sqlite" Version="0.0.6"/>
-        <PackageReference Include="System.ServiceModel.Syndication" Version="8.0.0-rc.2.23479.6"/>
+        <PackageReference Include="Nanorm" Version="0.1.0" />
+        <PackageReference Include="Nanorm.Sqlite" Version="0.1.0" />
+        <PackageReference Include="System.ServiceModel.Syndication" Version="8.0.0" />
     </ItemGroup>
 </Project>
