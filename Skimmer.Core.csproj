@@ -9,6 +9,6 @@
     <ItemGroup>
         <PackageReference Include="Nanorm" Version="0.1.2" />
         <PackageReference Include="Nanorm.Sqlite" Version="0.1.2" />
-        <PackageReference Include="System.ServiceModel.Syndication" Version="8.0.0" />
+        <PackageReference Include="System.ServiceModel.Syndication" Version="9.0.0-preview.1.24080.9" />
     </ItemGroup>
 </Project>
