@@ -1,14 +1,50 @@
-using System.Data;
+// Copyright © Nisar Ahmad
+// 
+// This program is free software:you can redistribute it and/or modify it under the terms of
+// the GNU General Public License as published by the Free Software Foundation, either
+// version 3 of the License, or (at your option) any later version.
+// This program is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY, without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+// A PARTICULAR PURPOSE.See the GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License along with this
+// program.If not, see <https://www.gnu.org/licenses/>.
 
+using System.Data;
 using Nanorm;
 
 namespace Skimmer.Core.Models;
 
 public class Feed : IDataRecordMapper<Feed>
-{  
-    public static Feed GetFeed(string title, string description, Uri link, int parentId, ICollection<FeedItem>? items, string imageUrl)
-    {
-        return new Feed()
+{
+    public int FeedId { get; init; }
+    public required string Title { get; init; }
+    public required string Description { get; init; }
+    public required Uri Link { get; init; }
+    public int ParentId { get; init; } = 1;
+
+    public ICollection<FeedItem>? Items { get; set; }
+    public required ICollection<Feed> Children { get; set; }
+    public required string ImageUrl { get; init; }
+
+    public static Feed Map(IDataRecord dataRecord) =>
+        new()
+        {
+            FeedId = dataRecord.GetInt32(nameof(FeedId)),
+            Title = dataRecord.GetString(nameof(Title)),
+            Description = dataRecord.GetString(nameof(Description)),
+            Link = dataRecord.GetString(nameof(Link))
+                .Equals(string.Empty)
+                ? new Uri("/",
+                    UriKind.Relative)
+                : new Uri(dataRecord.GetString(nameof(Link))),
+            ImageUrl = dataRecord.GetString(nameof(ImageUrl)),
+            ParentId = dataRecord.GetInt32(nameof(ParentId)),
+            Children = []
+        };
+
+    public static Feed GetFeed(string title, string description, Uri link, int parentId, ICollection<FeedItem>? items,
+        string imageUrl) =>
+        new()
         {
             Title = title,
             Description = description,
@@ -16,43 +52,18 @@ public class Feed : IDataRecordMapper<Feed>
             ParentId = parentId,
             Items = items,
             ImageUrl = imageUrl,
+            Children = []
         };
-    }
 
-    public static Feed GetFeedDirectory(string title, int parentId, string imageUrl, ICollection<Feed> children)
-    {
-        return new Feed()
+    public static Feed GetFeedDirectory(string title, int parentId, string imageUrl, ICollection<Feed> children) =>
+        new()
         {
             Title = title,
-            Description = String.Empty,
+            Description = string.Empty,
             Link = new Uri("/"),
             ParentId = parentId,
             Items = null,
             Children = children,
-            ImageUrl = imageUrl,
+            ImageUrl = imageUrl
         };
-    }
-
-    public int FeedId { get; set; }
-    public required string Title { get; init; }
-    public required string Description { get; init; }
-    public required Uri Link { get; init; }
-    public int ParentId { get; set; } = 1;
-
-    public ICollection<FeedItem>? Items { get; set; }
-    public ICollection<Feed>? Children { get; set; }
-    public required string ImageUrl { get; set; }
-
-    public static Feed Map(IDataRecord dataRecord)
-    {
-        return new Feed
-        {
-            FeedId = dataRecord.GetInt32(nameof(FeedId)),
-            Title = dataRecord.GetString(nameof(Title)),
-            Description = dataRecord.GetString(nameof(Description)),
-            Link = dataRecord.GetString(nameof(Link)).Equals(String.Empty) ? new Uri("/", UriKind.Relative) : new Uri(dataRecord.GetString(nameof(Link))),
-            ImageUrl = dataRecord.GetString(nameof(ImageUrl)),
-            ParentId = dataRecord.GetInt32(nameof(ParentId))
-        };
-    }
 }
