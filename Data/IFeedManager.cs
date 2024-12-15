@@ -1,5 +1,5 @@
 // Copyright © Nisar Ahmad
-// 
+//
 // This program is free software:you can redistribute it and/or modify it under the terms of
 // the GNU General Public License as published by the Free Software Foundation, either
 // version 3 of the License, or (at your option) any later version.
@@ -20,6 +20,6 @@ public interface IFeedManager
     Task<List<FeedItem>?> UpdateFeedAsync(int feedId);
     Task DeleteFeedAsync(int feedId);
     Task<IList<Feed>> GetAllFeedsAsync();
-    Task MarkAllAsReadAsync();
+    Task MarkAllAsReadAsync(int feedId);
     void MarkAsRead(int feedItemId);
 }
