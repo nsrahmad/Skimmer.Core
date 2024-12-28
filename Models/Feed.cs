@@ -1,5 +1,5 @@
 // Copyright © Nisar Ahmad
-// 
+//
 // This program is free software:you can redistribute it and/or modify it under the terms of
 // the GNU General Public License as published by the Free Software Foundation, either
 // version 3 of the License, or (at your option) any later version.
@@ -40,30 +40,5 @@ public class Feed : IDataRecordMapper<Feed>
             ImageUrl = dataRecord.GetString(nameof(ImageUrl)),
             ParentId = dataRecord.GetInt32(nameof(ParentId)),
             Children = []
-        };
-
-    public static Feed GetFeed(string title, string description, Uri link, int parentId, ICollection<FeedItem>? items,
-        string imageUrl) =>
-        new()
-        {
-            Title = title,
-            Description = description,
-            Link = link,
-            ParentId = parentId,
-            Items = items,
-            ImageUrl = imageUrl,
-            Children = []
-        };
-
-    public static Feed GetFeedDirectory(string title, int parentId, string imageUrl, ICollection<Feed> children) =>
-        new()
-        {
-            Title = title,
-            Description = string.Empty,
-            Link = new Uri("/"),
-            ParentId = parentId,
-            Items = null,
-            Children = children,
-            ImageUrl = imageUrl
         };
 }
