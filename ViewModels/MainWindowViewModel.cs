@@ -12,10 +12,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Skimmer.Avalonia.ViewModels;
 using Skimmer.Core.Data;
 using Skimmer.Core.Models;
-using Skimmer.Core.Nanorm;
 
 namespace Skimmer.Core.ViewModels;
 
@@ -27,7 +25,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _manager = new NanormFeedManager();
         IList<Feed> feeds = Task.Run(() => _manager.GetAllFeedsAsync()).GetAwaiter().GetResult();
-        Feeds.Add(new ObservableFeed(feeds[0]));
+        foreach (var feed in feeds)
+        {
+            Feeds.Add(new ObservableFeed(feed));
+        }
         SelectedFeed = Feeds[0];
         SelectedFeedItem = SelectedFeed.FeedItems[0];
     }
@@ -36,7 +37,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _manager = manager;
         IList<Feed> feeds = Task.Run(() => _manager.GetAllFeedsAsync()).GetAwaiter().GetResult();
-        Feeds.Add(new ObservableFeed(feeds[0]));
+        foreach (var feed in feeds)
+        {
+            Feeds.Add(new ObservableFeed(feed));
+        }
         SelectedFeed = Feeds[0];
         SelectedFeedItem = SelectedFeed.FeedItems[0];
     }
@@ -60,16 +64,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         value.IsRead = true;
         _manager.MarkAsRead(value.FeedItemId);
-        if (SelectedFeed.Children is { Count: not 0 })
-        {
-            SelectedFeed.Children.First( f => f.FeedId == value.FeedId).UnreadItems--;
-            SelectedFeed.UnreadItems--;
-        }
-        else
-        {
-            Feeds.First(f => f.FeedId == SelectedFeed.ParentId).UnreadItems--;
-            SelectedFeed.UnreadItems = SelectedFeed.FeedItems.Count(item => !item.IsRead);
-        }
+        SelectedFeed.UnreadItems--;
     }
 
     [RelayCommand]
@@ -84,8 +79,11 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        Feed? f = await OnAddFeed(link);
-        Feeds[0].Children!.Add(new ObservableFeed(f!)); // Feeds[0] is the "All feeds" Category
+        var f = await OnAddFeed(link);
+        if (f != null)
+        {
+            Feeds.Add(new ObservableFeed(f));
+        }
         IsAddDialogOpen = false;
     }
 
@@ -96,73 +94,42 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task OnDeleteFeed(int feedId)
     {
         await _manager.DeleteFeedAsync(feedId);
-        ObservableFeed f = Feeds[0].Children!.First(x => x.FeedId == feedId);
-        Feeds[0].Children!.Remove(f);
+        Feeds.Remove(Feeds.First(x => x.FeedId == feedId));
     }
 
     [RelayCommand]
     private async Task OnMarkAllAsRead(int feedId)
     {
-        // TODO: marking Top level feed messes up the count, as it is not handled correctly in db code.
-
         await _manager.MarkAllAsReadAsync(feedId);
-
-        // is it a toplevel feed?
-        foreach (ObservableFeed f in Feeds)
-        {
-            if (f.FeedId == feedId)
-            {
-                // Every Top-level feed must have at least one child.
-                foreach (ObservableFeed fChild in f.Children!)
-                {
-                    await OnMarkAllAsRead(fChild.FeedId);
-                }
-                return;
-            }
-        }
-
-        foreach (ObservableFeed f in Feeds)
-        {
-            var feed = f.Children!.First((feed) => feed.FeedId == feedId);
-            f.UnreadItems -= feed.UnreadItems;
-            feed.UnreadItems = 0;
-            if (feed.Children!.Count <= 0)
-            {
-                continue;
-            }
-
-            foreach (ObservableFeed feedChild in feed.Children)
-            {
-                await OnMarkAllAsRead(feedChild.FeedId);
-            }
-        }
+        Feeds.First(f => f.FeedId == feedId).UnreadItems = 0;
     }
 
     [RelayCommand]
     private async Task OnUpdateAllFeeds()
     {
-        IList<Feed> dirs = await _manager.GetAllFeedsAsync();
-        List<Task> tasks = new(dirs.Sum(dir => dir.Children.Count));
-        foreach (Feed dir in dirs)
+        IList<Feed> feeds = await _manager.GetAllFeedsAsync();
+        List<Task<List<FeedItem>?>> tasks = new(feeds.Count);
+        tasks.AddRange(feeds.Select(f => UpdateFeedAsync(f.FeedId)));
+        await foreach (var t in Task.WhenEach(tasks))
         {
-            tasks.AddRange(dir.Children.Select(f => UpdateFeedAsync(f.FeedId)));
-        }
+            var items = await t;
+            if (items == null)
+            {
+                continue;
+            }
 
-        await Task.WhenAll(tasks);
-    }
-
-    private async Task UpdateFeedAsync(int feedId)
-    {
-        List<FeedItem>? newItems = await _manager.UpdateFeedAsync(feedId);
-        if (newItems != null)
-        {
-            ObservableFeed f = Feeds[0].Children!.First(f => f.FeedId == feedId);
-            foreach (FeedItem i in newItems.OrderBy(i => i.LastUpdatedTime))
+            ObservableFeed f = Feeds.First(f => f.FeedId == items[0].FeedId);
+            f.UnreadItems += items.Count;
+            foreach (FeedItem i in items.OrderBy(i => i.LastUpdatedTime))
             {
                 f.FeedItems.Insert(0, new ObservableFeedItem(i));
-                f.UnreadItems++;
-                Feeds[0].UnreadItems++;
             }
         }
+    }
+
+    private async Task<List<FeedItem>?> UpdateFeedAsync(int feedId)
+    {
+        List<FeedItem>? newItems = await _manager.UpdateFeedAsync(feedId);
+        return newItems ?? null;
     }
 }

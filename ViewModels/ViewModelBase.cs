@@ -11,7 +11,7 @@
 
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Skimmer.Avalonia.ViewModels;
+namespace Skimmer.Core.ViewModels;
 
 public class ViewModelBase : ObservableObject
 {

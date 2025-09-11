@@ -20,10 +20,7 @@ public class Feed : IDataRecordMapper<Feed>
     public required string Title { get; init; }
     public required string Description { get; init; }
     public required Uri Link { get; init; }
-    public int ParentId { get; init; } = 1;
-
-    public ICollection<FeedItem>? Items { get; set; }
-    public required ICollection<Feed> Children { get; set; }
+    public required List<FeedItem> Items { get; set; }
     public required string ImageUrl { get; init; }
 
     public static Feed Map(IDataRecord dataRecord) =>
@@ -38,7 +35,6 @@ public class Feed : IDataRecordMapper<Feed>
                     UriKind.Relative)
                 : new Uri(dataRecord.GetString(nameof(Link))),
             ImageUrl = dataRecord.GetString(nameof(ImageUrl)),
-            ParentId = dataRecord.GetInt32(nameof(ParentId)),
-            Children = []
+            Items = new List<FeedItem>()
         };
 }

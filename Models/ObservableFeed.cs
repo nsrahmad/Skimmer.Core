@@ -21,36 +21,12 @@ public partial class ObservableFeed : ObservableObject
     public ObservableFeed(Feed feed)
     {
         _feed = feed;
-        UnreadItems = GetUnreadItems(feed);
+        UnreadItems = feed.Items.Count(i => !i.IsRead);
 
-        ICollection<ObservableFeedItem> items = GetFeedItems(feed);
-        ICollection<ObservableFeed> children = GetFeedChildren(feed);
-
-        FeedItems = new ObservableCollection<ObservableFeedItem>(items);
-        Children = new ObservableCollection<ObservableFeed>(children);
-        return;
-
-        int GetUnreadItems(Feed feed1)
-        {
-            return feed1.Children.Count != 0
-                ? feed1.Children.Sum(f => f.Items!.Count(i => !i.IsRead))
-                : feed1.Items!.Count(i => !i.IsRead);
-        }
-
-        ICollection<ObservableFeedItem> GetFeedItems(Feed feed2)
-        {
-            return feed2.Items != null
-                ? feed2.Items!.Select(i => new ObservableFeedItem(i)).ToList()
-                : feed2.Children.SelectMany(f => f.Items!.Select(i => new ObservableFeedItem(i))).ToList();
-        }
-
-        ICollection<ObservableFeed> GetFeedChildren(Feed feed3)
-        {
-            return feed3.Children.Select(f => new ObservableFeed(f)).ToList();
-        }
+        FeedItems = new ObservableCollection<ObservableFeedItem>(
+            feed.Items.Select(f => new ObservableFeedItem(f)).ToList()
+            );
     }
-
-    [ObservableProperty] public partial ObservableCollection<ObservableFeed>? Children { get; set; }
 
     [ObservableProperty] public partial ObservableCollection<ObservableFeedItem> FeedItems { get; set; }
 
@@ -60,9 +36,9 @@ public partial class ObservableFeed : ObservableObject
 
     public string Title => _feed.Title;
 
-    public int ParentId => _feed.ParentId;
-
-    public string ImageUrl => _feed.ImageUrl;
+    public string ImageUrl => _feed.ImageUrl == string.Empty
+        ? "/Assets/rss.png"
+        : _feed.ImageUrl;
 
     public string Description => _feed.Description;
 }
