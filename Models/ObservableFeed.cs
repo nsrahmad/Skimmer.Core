@@ -25,7 +25,7 @@ public partial class ObservableFeed : ObservableObject
 
         FeedItems = new ObservableCollection<ObservableFeedItem>(
             feed.Items.Select(f => new ObservableFeedItem(f)).ToList()
-            );
+        );
     }
 
     [ObservableProperty] public partial ObservableCollection<ObservableFeedItem> FeedItems { get; set; }

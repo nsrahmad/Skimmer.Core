@@ -40,91 +40,98 @@ public class NanormFeedManager : IFeedManager
             return;
         }
 
-        await using DbConnection db = SqliteFactory.Instance.CreateConnection();
-        db.ConnectionString = s_connectionString;
-        await db.ExecuteAsync("""
-                              CREATE TABLE Feeds (
-                                                     FeedId               INTEGER NOT NULL  PRIMARY KEY AUTOINCREMENT ,
-                                                     Description          TEXT NOT NULL    ,
-                                                     ImageUrl             TEXT NOT NULL    ,
-                                                     Link                 TEXT NOT NULL    ,
-                                                     Title                TEXT NOT NULL
-                              );
-
-                              CREATE TABLE FeedItems (
-                                                         FeedItemId           INTEGER NOT NULL  PRIMARY KEY AUTOINCREMENT ,
-                                                         Title                TEXT NOT NULL    ,
-                                                         Description          TEXT NOT NULL    ,
-                                                         Link                 TEXT NOT NULL UNIQUE    ,
-                                                         LastUpdatedTime      TEXT NOT NULL    ,
-                                                         IsRead               INTEGER NOT NULL    ,
-                                                         FeedId               INTEGER NOT NULL    ,
-                                                         FOREIGN KEY ( FeedId ) REFERENCES Feeds( FeedId ) ON DELETE CASCADE
-                              );
-
-                              CREATE INDEX IX_FeedItems_FeedId ON FeedItems ( FeedId );
-                              """);
-        string[] urls =
-        [
-            "https://news.ycombinator.com/rss",
-            "https://xkcd.com/rss.xml"
-        ];
-
-        Task[] tasks = new Task[urls.Length];
-        for (int i = 0; i < tasks.Length; i++)
+        try
         {
-            tasks[i] = AddFeedAsync(urls[i]);
-        }
+            await using (DbConnection db = SqliteFactory.Instance.CreateConnection())
+            {
+                db.ConnectionString = s_connectionString;
+                await db.ExecuteAsync("""
+                                      CREATE TABLE Feeds (
+                                                             FeedId               INTEGER NOT NULL  PRIMARY KEY AUTOINCREMENT ,
+                                                             Description          TEXT NOT NULL    ,
+                                                             ImageUrl             TEXT NOT NULL    ,
+                                                             Link                 TEXT NOT NULL    ,
+                                                             Title                TEXT NOT NULL
+                                      );
 
-        await Task.WhenAll(tasks);
+                                      CREATE TABLE FeedItems (
+                                                                 FeedItemId           INTEGER NOT NULL  PRIMARY KEY AUTOINCREMENT ,
+                                                                 Title                TEXT NOT NULL    ,
+                                                                 Description          TEXT NOT NULL    ,
+                                                                 Link                 TEXT NOT NULL UNIQUE    ,
+                                                                 LastUpdatedTime      TEXT NOT NULL    ,
+                                                                 IsRead               INTEGER NOT NULL    ,
+                                                                 FeedId               INTEGER NOT NULL    ,
+                                                                 FOREIGN KEY ( FeedId ) REFERENCES Feeds( FeedId ) ON DELETE CASCADE
+                                      );
+
+                                      CREATE INDEX IX_FeedItems_FeedId ON FeedItems ( FeedId );
+                                      """);
+            }
+
+            string[] urls =
+            [
+                "https://news.ycombinator.com/rss",
+                "https://xkcd.com/rss.xml"
+            ];
+
+            Task[] tasks = new Task[urls.Length];
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                tasks[i] = AddFeedAsync(urls[i]);
+            }
+
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception e)
+        {
+            await Console.Error.WriteLineAsync(e.Message);
+        }
     }
 
     public async Task<Feed?> AddFeedAsync(string link)
     {
         await using DbConnection db = SqliteFactory.Instance.CreateConnection();
         db.ConnectionString = s_connectionString;
-        try
-        {
-            using XmlReader reader = XmlReader.Create(await s_client.GetStreamAsync(link));
-            SyndicationFeed? netFeed = SyndicationFeed.Load(reader);
-            Feed feed = new()
-            {
-                Title = netFeed.Title.Text,
-                Description = netFeed.Description?.Text ?? netFeed.Title.Text,
-                Link = new Uri(link),
-                ImageUrl = netFeed.ImageUrl == null ? string.Empty : netFeed.ImageUrl.ToString(),
-                Items = netFeed.Items.Select(item => new FeedItem
-                    {
-                        Title = item.Title.Text,
-                        Description = item.Summary?.Text ?? (item.Content as TextSyndicationContent)!.Text,
-                        Link = item.Links[0].Uri,
-                        LastUpdatedTime = item.PublishDate.UtcDateTime
-                    })
-                    .ToList()
-            };
-            Feed? result = await db.QuerySingleAsync<Feed>($"""
-                                                            INSERT INTO Feeds( Description, ImageUrl, Link, Title)
-                                                            VALUES ({feed.Description}, {feed.ImageUrl}, {feed.Link.ToString()}, {feed.Title})
-                                                            RETURNING *
-                                                            """);
-            if (result == null)
-            {
-                return null;
-            }
 
-            result.Items = new List<FeedItem>();
-            foreach (var feedItem in feed.Items)
-            {
-                var f = await AddFeedItem(db, feedItem, result.FeedId);
-                if (f != null) result.Items.Add(f);
-            }
-            return result;
-        }
-        catch (Exception exception)
+        using XmlReader reader = XmlReader.Create(await s_client.GetStreamAsync(link));
+        SyndicationFeed? netFeed = SyndicationFeed.Load(reader);
+        Feed feed = new()
         {
-            await Console.Error.WriteLineAsync("Can't Insert Feed. Sorry! " + exception.Message);
+            Title = netFeed.Title.Text,
+            Description = netFeed.Description?.Text ?? netFeed.Title.Text,
+            Link = new Uri(link),
+            ImageUrl = netFeed.ImageUrl == null ? string.Empty : netFeed.ImageUrl.ToString(),
+            Items = netFeed.Items.Select(item => new FeedItem
+                {
+                    Title = item.Title.Text,
+                    Description = item.Summary?.Text ?? (item.Content as TextSyndicationContent)!.Text,
+                    Link = item.Links[0].Uri,
+                    LastUpdatedTime = item.PublishDate.UtcDateTime
+                })
+                .ToList()
+        };
+        Feed? result = await db.QuerySingleAsync<Feed>($"""
+                                                        INSERT INTO Feeds( Description, ImageUrl, Link, Title)
+                                                        VALUES ({feed.Description}, {feed.ImageUrl}, {feed.Link.ToString()}, {feed.Title})
+                                                        RETURNING *
+                                                        """);
+        if (result == null)
+        {
+            return null;
         }
-        return null;
+
+        result.Items = new List<FeedItem>();
+        foreach (FeedItem feedItem in feed.Items)
+        {
+            FeedItem? f = await AddFeedItem(db, feedItem, result.FeedId);
+            if (f != null)
+            {
+                result.Items.Add(f);
+            }
+        }
+
+        return result;
     }
 
     public async Task<List<FeedItem>?> UpdateFeedAsync(int feedId)
@@ -139,7 +146,7 @@ public class NanormFeedManager : IFeedManager
             List<FeedItem> feedItems = new();
             foreach (SyndicationItem? item in netFeed.Items)
             {
-                var feedItem = await AddFeedItem(db,
+                FeedItem? feedItem = await AddFeedItem(db,
                     new FeedItem
                     {
                         FeedId = feedId,
@@ -174,9 +181,9 @@ public class NanormFeedManager : IFeedManager
     {
         await using DbConnection db = SqliteFactory.Instance.CreateConnection();
         db.ConnectionString = s_connectionString;
-        List<Feed> allFeeds = await db.QueryAsync<Feed>($"SELECT * FROM Feeds").ToListAsync();
+        List<Feed> allFeeds = await db.QueryAsync<Feed>("SELECT * FROM Feeds").ToListAsync();
 
-        foreach (var feed in allFeeds)
+        foreach (Feed feed in allFeeds)
         {
             feed.Items =
                 await db.QueryAsync<FeedItem>(

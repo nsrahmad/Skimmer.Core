@@ -25,10 +25,11 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _manager = new NanormFeedManager();
         IList<Feed> feeds = Task.Run(() => _manager.GetAllFeedsAsync()).GetAwaiter().GetResult();
-        foreach (var feed in feeds)
+        foreach (Feed feed in feeds)
         {
             Feeds.Add(new ObservableFeed(feed));
         }
+
         SelectedFeed = Feeds[0];
         SelectedFeedItem = SelectedFeed.FeedItems[0];
     }
@@ -37,10 +38,11 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _manager = manager;
         IList<Feed> feeds = Task.Run(() => _manager.GetAllFeedsAsync()).GetAwaiter().GetResult();
-        foreach (var feed in feeds)
+        foreach (Feed feed in feeds)
         {
             Feeds.Add(new ObservableFeed(feed));
         }
+
         SelectedFeed = Feeds[0];
         SelectedFeedItem = SelectedFeed.FeedItems[0];
     }
@@ -52,6 +54,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] public partial string Url { get; set; } = string.Empty;
 
     [ObservableProperty] public partial bool IsAddDialogOpen { get; set; }
+
+    [ObservableProperty] public partial string StatusMessage { get; set; } = "Welcome to Skimmer";
 
     public ObservableCollection<ObservableFeed> Feeds { get; set; } = [];
 
@@ -79,11 +83,12 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var f = await OnAddFeed(link);
+        Feed? f = await OnAddFeed(link);
         if (f != null)
         {
             Feeds.Add(new ObservableFeed(f));
         }
+
         IsAddDialogOpen = false;
     }
 
@@ -110,9 +115,9 @@ public partial class MainWindowViewModel : ViewModelBase
         IList<Feed> feeds = await _manager.GetAllFeedsAsync();
         List<Task<List<FeedItem>?>> tasks = new(feeds.Count);
         tasks.AddRange(feeds.Select(f => UpdateFeedAsync(f.FeedId)));
-        await foreach (var t in Task.WhenEach(tasks))
+        await foreach (Task<List<FeedItem>?> t in Task.WhenEach(tasks))
         {
-            var items = await t;
+            List<FeedItem>? items = await t;
             if (items == null)
             {
                 continue;
