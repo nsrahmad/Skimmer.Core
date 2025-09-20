@@ -204,23 +204,16 @@ public class NanormFeedManager : IFeedManager
         await db.ExecuteAsync($"UPDATE FeedItems SET IsRead = 1 WHERE IsRead = 0 AND FeedId = {feedId};");
     }
 
-    public async void MarkAsRead(int feedItemId)
+    public async Task<FeedItem?> MarkAsRead(int feedItemId)
     {
-        try
-        {
-            await using DbConnection db = SqliteFactory.Instance.CreateConnection();
-            db.ConnectionString = s_connectionString;
-            await db.QuerySingleAsync<FeedItem>($"""
-                                                 Update FeedItems
-                                                 Set IsRead = 1
-                                                 WHERE FeedItems.FeedItemId = {feedItemId} AND IsRead = 0
-                                                 RETURNING *
-                                                 """);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.Message);
-        }
+        await using DbConnection db = SqliteFactory.Instance.CreateConnection();
+        db.ConnectionString = s_connectionString;
+        return await db.QuerySingleAsync<FeedItem>($"""
+                                                    Update FeedItems
+                                                    Set IsRead = 1
+                                                    WHERE FeedItems.FeedItemId = {feedItemId} AND IsRead = 0
+                                                    RETURNING *
+                                                    """);
     }
 
     private static async Task<FeedItem?> AddFeedItem(DbConnection db, FeedItem feedItem, int feedId) =>

@@ -21,5 +21,5 @@ public interface IFeedManager
     Task DeleteFeedAsync(int feedId);
     Task<IList<Feed>> GetAllFeedsAsync();
     Task MarkAllAsReadAsync(int feedId);
-    void MarkAsRead(int feedItemId);
+    Task<FeedItem?> MarkAsRead(int feedItemId);
 }
