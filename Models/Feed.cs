@@ -10,6 +10,7 @@
 // program.If not, see <https://www.gnu.org/licenses/>.
 
 using System.Data;
+
 using Nanorm;
 
 namespace Skimmer.Core.Models;

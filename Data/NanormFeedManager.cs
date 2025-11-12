@@ -13,7 +13,6 @@ using System.Data.Common;
 using System.ServiceModel.Syndication;
 using System.Xml;
 using Microsoft.Data.Sqlite;
-using Nanorm;
 using Skimmer.Core.Models;
 
 namespace Skimmer.Core.Data;
@@ -181,7 +180,7 @@ public class NanormFeedManager : IFeedManager
     {
         await using DbConnection db = SqliteFactory.Instance.CreateConnection();
         db.ConnectionString = s_connectionString;
-        List<Feed> allFeeds = await db.QueryAsync<Feed>("SELECT * FROM Feeds").ToListAsync();
+        List<Feed> allFeeds = await db.QueryAsync<Feed>("SELECT * FROM Feeds").ToListAsync(CancellationToken.None);
 
         foreach (Feed feed in allFeeds)
         {
@@ -191,7 +190,7 @@ public class NanormFeedManager : IFeedManager
                      select * from FeedItems
                      where FeedId = {feed.FeedId}
                      order by LastUpdatedTime DESC
-                     """).ToListAsync();
+                     """).ToListAsync(CancellationToken.None);
         }
 
         return allFeeds;
